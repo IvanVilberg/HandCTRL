@@ -3,8 +3,9 @@ import numpy as np
 import HandTrakingModule as htm
 import time
 from pynput.mouse import Button, Controller
-import keyboard
-import ctypes
+from Xlib import display
+# For Windows
+# import ctypes
 
 
 class HandControl:
@@ -13,8 +14,12 @@ class HandControl:
         self.wCam, self.hCam = wCam, hCam
         self.smoothening = smoothening
 
-        self.user32 = ctypes.windll.user32
-        self.wScreen, self.hScreen = self.user32.GetSystemMetrics(0), self.user32.GetSystemMetrics(1)
+        # For Windows
+        # self.user32 = ctypes.windll.user32
+        # self.wScreen, self.hScreen = self.user32.GetSystemMetrics(0), self.user32.GetSystemMetrics(1)
+
+        screen = display.Display().screen()
+        self.wScreen, self.hScreen = screen.width_in_pixels, screen.height_in_pixels
 
         self.frameReduction = int(self.wCam * 0.1)
         self.adapterForCam = 50
@@ -124,25 +129,12 @@ class HandControl:
         self._move_mouse(cx, cy)
 
     def _handle_scrolling(self, y):
+        scroll_threshold = 20
 
-        if y < self.centerPoint - 20:
-            if self.scroll_direction != 1:
-                self.scroll_direction = 1
-                self.scrolling_mode = True
-        elif y > self.centerPoint + 20:
-            if self.scroll_direction != -1:
-                self.scroll_direction = -1
-                self.scrolling_mode = True
-        else:
-            self.scroll_direction = 0
-            self.scrolling_mode = False
-
-
-        if self.scrolling_mode:
-            if self.scroll_direction == 1:
-                self.mouse.scroll(0, 0.2)  # Scroll up
-            elif self.scroll_direction == -1:
-                self.mouse.scroll(0, -0.2)  # Scroll down
+        if y < self.centerPoint - scroll_threshold:
+            self.mouse.scroll(0, 1)  # Scroll up
+        elif y > self.centerPoint + scroll_threshold:
+            self.mouse.scroll(0, -1)  # Scroll down
 
 
 def main():
@@ -171,7 +163,7 @@ def main():
 
         # Display
         cv2.imshow("Hand Control", img)
-        if cv2.waitKey(1) & 0xFF == ord('q') or keyboard.is_pressed("space"):
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
     cap.release()
