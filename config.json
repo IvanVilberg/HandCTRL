@@ -1,0 +1,42 @@
+{
+    "gestures": {
+        "move_mouse": {
+            "fingers_up": [0, 1, 1, 0, 0],
+            "min_fingers_up": 2,
+            "max_fingers_up": 2
+        },
+        "left_click": {
+            "fingers_up": [1, 1, 0, 0, 0],
+            "distance_threshold": 10,
+            "landmarks": [8, 7]
+        },
+        "right_click": {
+            "fingers_up": [1, 1, 1, 0, 0],
+            "distance_threshold": 10,
+            "landmarks": [12, 11]
+        },
+        "hold_and_move": {
+            "fingers_up": [0, 0, 0, 0, 0],
+            "min_fingers_up": 0,
+            "max_fingers_up": 0
+        },
+        "scroll": {
+            "fingers_up": [0, 1, 1, 1, 1],
+            "min_fingers_up": 4,
+            "max_fingers_up": 4,
+            "scroll_threshold": 20,
+            "landmark": 20
+        },
+        "release": {
+            "fingers_up": [1, 1, 1, 1, 1],
+            "min_fingers_up": 5,
+            "max_fingers_up": 5
+        }
+    },
+    "settings": {
+        "frame_reduction": 0.1,
+        "adapter_for_cam": 50,
+        "smoothening": 7,
+        "click_delay": 30
+    }
+}
