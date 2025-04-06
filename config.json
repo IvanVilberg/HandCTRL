@@ -1,42 +1,46 @@
 {
-    "gestures": {
-        "move_mouse": {
-            "fingers_up": [0, 1, 1, 0, 0],
-            "min_fingers_up": 2,
-            "max_fingers_up": 2
-        },
-        "left_click": {
-            "fingers_up": [1, 1, 0, 0, 0],
-            "distance_threshold": 10,
-            "landmarks": [8, 7]
-        },
-        "right_click": {
-            "fingers_up": [1, 1, 1, 0, 0],
-            "distance_threshold": 10,
-            "landmarks": [12, 11]
-        },
-        "hold_and_move": {
-            "fingers_up": [0, 0, 0, 0, 0],
-            "min_fingers_up": 0,
-            "max_fingers_up": 0
-        },
-        "scroll": {
-            "fingers_up": [0, 1, 1, 1, 1],
-            "min_fingers_up": 4,
-            "max_fingers_up": 4,
-            "scroll_threshold": 20,
-            "landmark": 20
-        },
-        "release": {
-            "fingers_up": [1, 1, 1, 1, 1],
-            "min_fingers_up": 5,
-            "max_fingers_up": 5
-        }
-    },
     "settings": {
+        "smoothening": 7,
         "frame_reduction": 0.1,
         "adapter_for_cam": 50,
-        "smoothening": 7,
         "click_delay": 30
+    },
+    "gestures": {
+        "right_hand": {
+            "move_mouse": {
+                "fingers_up": [0, 1, 1, 0, 0],
+                "description": "Указательный и средний пальцы подняты"
+            },
+            "left_click": {
+                "fingers_up": [1, 1, 0, 0, 0],
+                "distance_threshold": 40,
+                "landmarks": [8, 6],
+                "description": "Большой и указательный пальцы сближены"
+            },
+            "right_click": {
+                "fingers_up": [1, 1, 1, 0, 0],
+                "distance_threshold": 40,
+                "landmarks": [12, 10],
+                "description": "Большой, указательный и средний пальцы"
+            },
+            "hold_and_move": {
+                "fingers_up": [0, 0, 0, 0, 0],
+                "description": "Все пальцы сжаты"
+            },
+            "release": {
+                "fingers_up": [1, 1, 1, 1, 1],
+                "description": "Все пальцы раскрыты"
+            }
+        },
+        "left_hand": {
+            "app_launch": {
+                "gestures": {
+                    "chrome": {
+                        "fingers_up": [0, 1, 0, 0, 0],
+                        "command": "nautilus"
+                    }
+                }
+            }
+        }
     }
 }

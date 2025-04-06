@@ -1,8 +1,11 @@
+import time
 import cv2
 import HandTrakingModule as htm
 import numpy as np
 import json
 import os
+import subprocess
+import gc
 from pynput.mouse import Button, Controller
 from Xlib import display
 # For Windows
@@ -39,12 +42,21 @@ class HandControl:
         self.RightButtonPressed = False
         self.LeftButtonPressed = False
 
-        self.handDetector = htm.HandDetector(maxHands=1)
+        self.handDetector = htm.HandDetector(maxHands=2)
 
         self.delayButton = 0
         self.centerPoint = h_cam // 2
         self.scroll_direction = 0
+        self.last_app_launch_time = 0
+        self.app_launch_cooldown = 2
 
+        self.prev_img = None
+        self.frame_counter = 0
+
+    def __del__(self):
+        if hasattr(self, 'handDetector'):
+            del self.handDetector
+        gc.collect()
 
     # Load config file in the program
     def _load_config(self, config_file):
@@ -56,96 +68,97 @@ class HandControl:
         return config
 
     # Function for check gestures with config
-    def _check_gesture(self, fingers, gesture_name):
-        gesture = self.config["gestures"][gesture_name]
+    def _check_gesture(self, fingers, hand_type, gesture_name):
+        try:
+            gesture = self.config["gestures"][hand_type][gesture_name]
+            if "fingers_up" in gesture:
+                if fingers == gesture["fingers_up"]:
+                    return True
 
-        if "fingers_up" in gesture:
-            if fingers == gesture["fingers_up"]:
-                return True
+            if all(k in gesture for k in ["min_fingers_up", "max_fingers_up"]):
+                fingers_count = sum(fingers)
+                return gesture["min_fingers_up"] <= fingers_count <= gesture["max_fingers_up"]
 
-        if "min_fingers_up" in gesture and "max_finges_up" in gesture:
-            fingers_up_count = sum(fingers)
-            if gesture["min_fingers_up"] <= fingers_up_count <= gesture["max_fingers_up"]:
-                return True
+            return False
+        except KeyError:
+            print(f"Жест {gesture_name} не найден для {hand_type}")
+            return False
 
-        return False
+    # Start application
+    def _launch_application(self, command):
+        try:
+            subprocess.Popen(command.split(), shell=True)
+            return True
+        except Exception as e:
+            print(f"Ошибка запуска: {e}")
+            return False
 
+    def _right_hand(self, img, landmarks_list):
+        if not landmarks_list:
+            return img
 
-    def process_frame(self, img):
-        img = self.handDetector.findHand(img)
-        landmarks_list = self.handDetector.findPosition(img, draw=False)
+        fingers = self.handDetector.fingers_up(landmarks_list)
 
-        if not self.delayButton == 30 and not (self.RightButtonPressed or self.LeftButtonPressed):
-            self.delayButton += 1
-        elif self.delayButton == self.delayButtonMax:
-            self.RightButtonPressed, self.LeftButtonPressed = False, False
+        # Движение мыши - подняты указательный и средний пальцы
+        if fingers == [0, 1, 1, 0, 0]:
+            x1, y1 = landmarks_list[8][1], landmarks_list[8][2]  # Указательный
+            x2, y2 = landmarks_list[12][1], landmarks_list[12][2]  # Средний
+            cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
+            self._move_mouse(cx, cy)
+            cv2.putText(img, "MOVE", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
+        # Левый клик - подняты большой и указательный пальцы
+        elif fingers == [1, 1, 0, 0, 0]:
+            self.mouse.click(Button.left, 1)
+            cv2.putText(img, "LEFT CLICK", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-        if len(landmarks_list) != 0:
-            fingers = self.handDetector.fingersUp()
+        # Правый клик - подняты 3 пальца
+        elif fingers == [1, 1, 1, 0, 0]:
+            self.mouse.click(Button.right, 1)
+            cv2.putText(img, "RIGHT CLICK", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
-            # Draw rectangle for mouse control
-            cv2.rectangle(img, (self.frameReduction, self.frameReduction + self.adapterForCam),
-                          ((self.wCam - self.frameReduction), (self.hCam - self.frameReduction + self.adapterForCam)),
-                          (255, 0, 0), 2)
+        # Удержание - кулак
+        elif fingers == [0, 0, 0, 0, 0]:
+            if not self.LeftButtonPressed:
+                self.mouse.press(Button.left)
+                self.LeftButtonPressed = True
+            cv2.putText(img, "HOLD", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
 
-            # Move mouse if only index finger up
-            if self._check_gesture(fingers, "move_mouse"):
-                x1, y1 = landmarks_list[8][1], landmarks_list[8][2]
-                x2, y2 = landmarks_list[12][1], landmarks_list[12][2]
-                cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-                cv2.circle(img, (cx, cy), 15, (255, 0, 255), cv2.FILLED)
-                self._move_mouse(cx, cy)
-
-
-            # Left click
-            if self._check_gesture(fingers, "left_click"):
-                gesture = self.config["gestures"]["left_click"]
-                length, img, _ = self.handDetector.findDistance(
-                    gesture["landmarks"][0], gesture["landmarks"][1], img)
-
-                if not self.LeftButtonPressed and length < gesture["distance_threshold"]:
-                    self.mouse.click(Button.left, 1)
-                    self.RightButtonPressed, self.LeftButtonPressed = False, True
-                self.clickSmother = 0
-
-            # Right click
-            if self._check_gesture(fingers, "right_click"):
-                gesture = self.config["gestures"]["right_click"]
-                length, img, _ = self.handDetector.findDistance(
-                    gesture["landmarks"][0], gesture["landmarks"][1], img)
-
-                if not self.RightButtonPressed and length < gesture ["distance_threshold"]:
-                    self.mouse.click(Button.right, 1)
-                    self.RightButtonPressed, self.LeftButtonPressed = True, False
-                self.clickSmother = 0
-
-            # Hold mode if all fingers down
-            if self._check_gesture(fingers, "hold_and_move"):
-                x1, y1 = landmarks_list[8][1], landmarks_list[8][2]
-                x2, y2 = landmarks_list[12][1], landmarks_list[12][2]
-                cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-
-                if not self.LeftButtonPressed:
-                    self.mouse.press(Button.left)
-                    self.LeftButtonPressed = True
-                self._move_mouse(cx, cy)
-
-
-            if self._check_gesture(fingers, "release"):
+        # Отпускание - ладонь
+        elif fingers == [1, 1, 1, 1, 1]:
+            if self.LeftButtonPressed:
                 self.mouse.release(Button.left)
-
-            if self._check_gesture(fingers, "scroll"):
-                gesture = self.config["gestures"]["scroll"]
-                y = landmarks_list[gesture["landmark"]][2]
-
-                if y < self.centerPoint - gesture["scroll_threshold"]:
-                    self.mouse.scroll(0, 1)
-                elif y > self.centerPoint + gesture["scroll_threshold"]:
-                    self.mouse.scroll(0, -1)
+                self.LeftButtonPressed = False
+            cv2.putText(img, "RELEASE", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
 
         return img
 
+    def _left_hand(self, img, landmarks_list):
+        try:
+            if not landmarks_list:
+                return img
+
+            fingers = self.handDetector.fingers_up(landmarks_list)
+            current_time = time.time()
+
+            # Отрисовка маркеров
+            for id, cx, cy in landmarks_list[:21]:  # Ограничение 21 точки
+                cv2.circle(img, (cx, cy), 7, (0, 0, 255), cv2.FILLED)
+
+            # Проверка жестов запуска
+            if current_time - self.last_app_launch_time > self.app_launch_cooldown:
+                for app_name, gesture_config in self.config["gestures"]["left_hand"]["app_launch"]["gestures"].items():
+                    if fingers == gesture_config["fingers_up"]:
+                        if self._launch_application(gesture_config["command"]):
+                            cv2.putText(img, f"Launching {app_name}", (50, 80),
+                                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                        self.last_app_launch_time = current_time
+                        break
+
+
+        except Exception as e:
+            print(f"Ошибка обработки левой руки: {e}")
+        return img
 
     def _move_mouse(self, x1, y1):
         x3 = np.interp(x1, (self.frameReduction, (self.wCam - self.frameReduction)), (0, self.wScreen))
@@ -159,54 +172,56 @@ class HandControl:
         self.mouse.position = [(self.wScreen - self.cLocX), self.cLocY]
         self.pLocX, self.pLocY = self.cLocX, self.cLocY
 
+    def _process_frame(self, img):
+        try:
+            # Освобождаем память от предыдущего кадра
+            if hasattr(self, 'prev_img'):
+                del self.prev_img
+            self.prev_img = img.copy()
 
-    def _handle_clicking(self, img, fingers):
-        lengthMB, img, lineInfoIM = self.handDetector.findDistance(12, 11, img)
-        lengthIB, img, lineInfoIB = self.handDetector.findDistance(8, 7, img)
+            # Периодическая сборка мусора
+            self.frame_counter += 1
+            if self.frame_counter % 30 == 0:
+                gc.collect()
 
+            # Сначала находим руки на изображении
+            img = self.handDetector.find_hands(img)
 
+            # Затем получаем позиции landmarks
+            hands_data = self.handDetector.findPosition(img, draw=False, allHands=True)
 
-        if not self.LeftButtonPressed and lengthIB < 10:
-            self.mouse.click(Button.left, 1)
-            self.RightButtonPressed, self.LeftButtonPressed = False, True
-        elif not self.RightButtonPressed and lengthMB < 10:
-            self.mouse.click(Button.right, 1)
-            self.RightButtonPressed, self.LeftButtonPressed = True, False
+            # Обрабатываем не более 2 рук
+            max_hands = min(len(hands_data), 2)
+            for i in range(max_hands):
+                if i == 0:  # Правая рука
+                    self._right_hand(img, hands_data[i])
+                else:  # Левая рука
+                    self._left_hand(img, hands_data[i])
 
-        self.clickSmother = 0
+            return img
 
-
-    def _hold_button_and_move(self, cx, cy):
-        if not self.LeftButtonPressed:
-            self.mouse.press(Button.left)
-            self.LeftButtonPressed = True
-        self._move_mouse(cx, cy)
-
-    def _handle_scrolling(self, y):
-        scroll_threshold = 20
-
-        if y < self.centerPoint - scroll_threshold:
-            self.mouse.scroll(0, 1)  # Scroll up
-        elif y > self.centerPoint + scroll_threshold:
-            self.mouse.scroll(0, -1)  # Scroll down
-
+        except Exception as e:
+            print(f"Ошибка обработки кадра: {e}")
+            return img
 
 def main():
-    wCam, hCam = 640, 360
+    w_cam, h_cam = 640, 360
     cap = cv2.VideoCapture(0)
-    cap.set(3, wCam)
-    cap.set(4, hCam)
+    cap.set(3, w_cam)
+    cap.set(4, h_cam)
 
-    handControl = HandControl(wCam, hCam)
-
-
+    hand_contol = HandControl(w_cam, h_cam)
 
     while True:
         success, img = cap.read()
         if not success:
             break
 
-        img = handControl.process_frame(img)
+        img = hand_contol._process_frame(img)
+
+        # Подпись для режима левой руки
+        cv2.putText(img, "Left: Apps | Right: Mouse", (10, 60),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
         # Display
         cv2.imshow("Hand Control", img)
