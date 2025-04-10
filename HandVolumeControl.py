@@ -23,12 +23,12 @@ volumeRange = volume.GetVolumeRange()
 minVol = volumeRange[0]
 maxVol = volumeRange[1]
 
-detector = htm.HandDetector(detectionCon=0.7)
+detector = htm.HandDetector(detection_con=0.7)
 
 while True:
     success, img = cap.read()
     img = detector.find_hands(img)
-    lmList = detector.findPosition(img, draw=False)
+    lmList = detector.find_position(img, draw=False)
 
     if len(lmList) != 0:
         print(lmList[4], lmList[8])
