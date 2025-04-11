@@ -20,8 +20,8 @@ class HandControl:
         self.config = self._load_config(config_file)
 
         self.smoothening = self.config["settings"]["smoothening"]
-        self.adapterForCam = self.config["settings"]["adapter_for_cam"]
-        self.delayButtonMax = self.config["settings"]["click_delay"]
+        self.adapter_for_cam = self.config["settings"]["adapter_for_cam"]
+        self.delay_button_max = self.config["settings"]["click_delay"]
 
         self.reduction_ratio = 0.3
         self.reduced_x1 = int(self.w_cam * self.reduction_ratio / 2)
@@ -30,25 +30,26 @@ class HandControl:
         self.reduced_y2 = self.h_cam - self.reduced_y1
 
         self.mouse = Controller()
-        self.p_loc_x, self.p_loc_y = 0, 0
-        self.c_loc_x, self.c_loc_y = 0, 0
+
+        # Variables for smoothing motion
+        self.p_loc_x, self.p_loc_y = 0, 0 # Previous points
+        self.c_loc_x, self.c_loc_y = 0, 0 # Current points
 
         self.right_button_is_pressed = False
         self.left_button_is_pressed = False
 
+
         self.hand_detector = htm.HandDetector(max_hands=2)
-        self.delayButton = 0
-        self.centerPoint = h_cam // 2
+
+        self.delay_button = 0
+
+        self.center_point = h_cam // 2
+
         self.last_app_launch_time = 0
         self.app_launch_cooldown = 2
 
-        self.prev_img = None
+        self.prev_img = None # Previous frame
         self.frame_counter = 0
-
-    def __del__(self):
-        if hasattr(self, 'handDetector'):
-            del self.hand_detector
-        gc.collect()
 
     def _load_config(self, config_file):
         if not os.path.exists(config_file):
@@ -58,16 +59,15 @@ class HandControl:
             config = json.load(f)
         return config
 
+    # Comparing fingers with patterns
     def _check_gesture(self, fingers, hand_type, gesture_name):
         try:
             gesture = self.config["gestures"][hand_type][gesture_name]
+
             if "fingers_up" in gesture:
                 if fingers == gesture["fingers_up"]:
                     return True
-            if all(k in gesture for k in ["min_fingers_up", "max_fingers_up"]):
-                fingers_count = sum(fingers)
-                return gesture["min_fingers_up"] <= fingers_count <= gesture["max_fingers_up"]
-            return False
+
         except KeyError:
             print(f"Жест {gesture_name} не найден для {hand_type}")
             return False
@@ -76,14 +76,16 @@ class HandControl:
         try:
             subprocess.Popen(command.split(), shell=True)
             return True
+
         except Exception as e:
             print(f"Ошибка запуска: {e}")
             return False
 
+    # Delay between gestures
     def _delay(self):
-        self.delayButton += 1
-        if self.delayButton > self.delayButtonMax:
-            self.delayButton = 0
+        self.delay_button += 1
+        if self.delay_button > self.delay_button_max:
+            self.delay_button = 0
             self.left_button_is_pressed = False
             self.right_button_is_pressed = False
 
@@ -100,21 +102,21 @@ class HandControl:
             cv2.putText(img, "MOVE", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
         elif self._check_gesture(fingers, hand_type, "left_one_click"):
-            if not self.left_button_is_pressed and self.delayButton == 0:
+            if not self.left_button_is_pressed and self.delay_button == 0:
                 self.mouse.click(Button.left, 1)
                 self.left_button_is_pressed = True
             else:
                 self._delay()
 
         elif self._check_gesture(fingers, hand_type, "left_double_click"):
-            if not self.left_button_is_pressed and self.delayButton == 0:
+            if not self.left_button_is_pressed and self.delay_button == 0:
                 self.mouse.click(Button.left, 2)
                 self.left_button_is_pressed = True
             else:
                 self._delay()
 
         elif self._check_gesture(fingers, hand_type, "right_click"):
-            if not self.right_button_is_pressed and self.delayButton == 0:
+            if not self.right_button_is_pressed and self.delay_button == 0:
                 self.mouse.click(Button.right, 1)
                 self.right_button_is_pressed = True
             else:
@@ -142,6 +144,7 @@ class HandControl:
 
         return img
 
+
     def _left_hand(self, img, landmarks_list):
         try:
             if not landmarks_list:
@@ -166,17 +169,22 @@ class HandControl:
             print(f"Ошибка обработки левой руки: {e}")
         return img
 
+
     def _move_mouse(self, x1, y1):
+        # Convert coordinates from camera to display
         x3 = np.interp(x1, (self.reduced_x1, self.reduced_x2), (0, self.w_screen))
         y3 = np.interp(y1, (
-            self.reduced_y1 + self.adapterForCam,
-            self.reduced_y2 + self.adapterForCam
+            self.reduced_y1 + self.adapter_for_cam,
+            self.reduced_y2 + self.adapter_for_cam
         ), (0, self.h_screen))
 
+        # Smoothening
         self.c_loc_x = self.p_loc_x + (x3 - self.p_loc_x) / self.smoothening
         self.c_loc_y = self.p_loc_y + (y3 - self.p_loc_y) / self.smoothening
 
+        # Setup mouse position
         self.mouse.position = [(self.w_screen - self.c_loc_x), self.c_loc_y]
+
         self.p_loc_x, self.p_loc_y = self.c_loc_x, self.c_loc_y
 
     def _process_frame(self, img):
@@ -185,22 +193,25 @@ class HandControl:
                 del self.prev_img
             self.prev_img = img.copy()
 
+            # Garbage collection
             self.frame_counter += 1
             if self.frame_counter % 30 == 0:
                 gc.collect()
 
-            img = self.hand_detector.find_hands(img)
-            hands_data = self.hand_detector.find_position(img, draw=False)
+            img = self.hand_detector.find_hands(img) # Detection hands
+            hands_data = self.hand_detector.find_position(img, draw=False) # Capture hands
 
             for hand in hands_data:
                 landmarks = hand["landmarks"]
                 hand_label = hand["label"]
 
+                # Inversion of hands due to camera mirroring
                 if hand_label == "left":
                     self._right_hand(img, landmarks)
                 elif hand_label == "right":
                     self._left_hand(img, landmarks)
 
+            # Gesture capture area
             cv2.rectangle(
                 img,
                 (self.reduced_x1, self.reduced_y1),
@@ -240,6 +251,7 @@ def main():
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
+    # Freeing up resources
     cap.release()
     cv2.destroyAllWindows()
 
