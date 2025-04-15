@@ -8,36 +8,83 @@
     "gestures": {
         "right_hand": {
             "move_mouse": {
-                "fingers_up": [0, 1, 0, 0, 0],
+                "fingers_up": [
+                    0,
+                    1,
+                    0,
+                    0,
+                    0
+                ],
                 "description": "Указательный и средний пальцы подняты"
             },
             "left_one_click": {
-                "fingers_up": [1, 1, 0, 0, 0],
+                "fingers_up": [
+                    1,
+                    1,
+                    0,
+                    0,
+                    0
+                ],
                 "description": "Большой и указательный пальцы сближены"
             },
             "left_double_click": {
-                "fingers_up": [0, 1, 1, 0, 0],
+                "fingers_up": [
+                    0,
+                    1,
+                    1,
+                    0,
+                    0
+                ],
                 "description": "Большой и указательный пальцы сближены"
             },
             "right_click": {
-                "fingers_up": [1, 1, 1, 0, 0],
-                "distance_threshold": 40,
+                "fingers_up": [
+                    1,
+                    1,
+                    1,
+                    0,
+                    0
+                ],
                 "description": "Большой, указательный и средний пальцы"
             },
             "scroll_up": {
-                "fingers_up": [0, 1, 1, 1, 1],
+                "fingers_up": [
+                    0,
+                    1,
+                    1,
+                    1,
+                    1
+                ],
                 "description": "Безымянный и мизинец"
             },
             "scroll_down": {
-                "fingers_up": [1, 0, 0, 0, 0],
+                "fingers_up": [
+                    1,
+                    0,
+                    0,
+                    0,
+                    0
+                ],
                 "description": "Только большой палец"
             },
             "hold_and_move": {
-                "fingers_up": [0, 0, 0, 0, 0],
+                "fingers_up": [
+                    0,
+                    0,
+                    0,
+                    0,
+                    0
+                ],
                 "description": "Все пальцы сжаты"
             },
             "release": {
-                "fingers_up": [1, 1, 1, 1, 1],
+                "fingers_up": [
+                    1,
+                    1,
+                    1,
+                    1,
+                    1
+                ],
                 "description": "Все пальцы раскрыты"
             }
         },
@@ -45,11 +92,23 @@
             "app_launch": {
                 "gestures": {
                     "nautilus": {
-                        "fingers_up": [0, 1, 0, 0, 0],
-                        "command": "nautilus"
+                        "fingers_up": [
+                            0,
+                            1,
+                            0,
+                            0,
+                            0
+                        ],
+                        "command": "gnome-terminal"
                     },
                     "firefox": {
-                        "fingers_up": [0, 1, 1, 0, 0],
+                        "fingers_up": [
+                            0,
+                            1,
+                            1,
+                            0,
+                            0
+                        ],
                         "command": "firefox"
                     }
                 }
