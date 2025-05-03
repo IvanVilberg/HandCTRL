@@ -110,6 +110,16 @@
                             0
                         ],
                         "command": "firefox"
+                    },
+                    "file manager": {
+                        "fingers_up": [
+                            1,
+                            1,
+                            1,
+                            0,
+                            0
+                        ],
+                        "command": "nautilus"
                     }
                 }
             }

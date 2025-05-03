@@ -107,6 +107,7 @@ class HandControl:
                 self.left_button_is_pressed = True
             else:
                 self._delay()
+            cv2.putText(img, "LEFT CLICK", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
         elif self._check_gesture(fingers, hand_type, "left_double_click"):
             if not self.left_button_is_pressed and self.delay_button == 0:
@@ -114,6 +115,7 @@ class HandControl:
                 self.left_button_is_pressed = True
             else:
                 self._delay()
+            cv2.putText(img, "DOUBLE CLICK", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
         elif self._check_gesture(fingers, hand_type, "right_click"):
             if not self.right_button_is_pressed and self.delay_button == 0:
@@ -121,6 +123,7 @@ class HandControl:
                 self.right_button_is_pressed = True
             else:
                 self._delay()
+            cv2.putText(img, "RIGHT CLICK", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
         elif self._check_gesture(fingers, hand_type, "scroll_up"):
             self.mouse.scroll(0, 1)

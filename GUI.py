@@ -13,7 +13,7 @@ class GUI(ctk.CTk):
         super().__init__()
 
         # Setup style for gui
-        ctk.set_appearance_mode("dark")
+        ctk.set_appearance_mode("white")
         ctk.set_default_color_theme("blue")
 
         self.button_color = "#1f538d"
@@ -278,6 +278,25 @@ class GUI(ctk.CTk):
         save_button.pack(pady=(10, 20))
 
     def save_config_and_back(self):
+        # Сохраняем настройки правой руки
+        for gesture_name, finger_vars in self.right_hand_vars.items():
+            self.config_data["gestures"]["right_hand"][gesture_name]["fingers_up"] = [
+                var.get() for var in finger_vars
+            ]
+
+        # Сохраняем настройки левой руки
+        for app_name, gesture_data in self.left_hand_vars.items():
+            self.config_data["gestures"]["left_hand"]["app_launch"]["gestures"][app_name]["fingers_up"] = [
+                var.get() for var in gesture_data["fingers"]
+            ]
+            self.config_data["gestures"]["left_hand"]["app_launch"]["gestures"][app_name]["command"] = \
+                gesture_data["command_var"].get()
+
+        # Сохраняем общие настройки
+        for key in ["smoothening", "frame_reduction", "adapter_for_cam", "click_delay"]:
+            var = getattr(self, f"{key}_var")
+            self.config_data["settings"][key] = var.get()
+
         if self.save_config():
             messagebox.showinfo("Успех", "Настройки успешно сохранены!")
             self.show_main_menu()
@@ -450,7 +469,7 @@ class GUI(ctk.CTk):
         # Create frame for add gesture
         dialog = ctk.CTkToplevel(self)
         dialog.title("Добавить жест")
-        dialog.geometry("400x200")
+        dialog.geometry("400x250")
         dialog.resizable(False, False)
         dialog.transient(self)
 
@@ -534,7 +553,7 @@ class GUI(ctk.CTk):
         name_label.pack(side="left", padx=5)
 
         fingers_frame = ctk.CTkFrame(frame)
-        fingers_frame.pack(side="left", padx=10)
+        fingers_frame.pack(side="right", padx=10)
 
         fingers = ["Большой", "Указательный", "Средний", "Безымянный", "Мизинец"]
         finger_vars = []
